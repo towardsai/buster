@@ -135,10 +135,10 @@ class Completion:
         self._answer_text = value
 
     @property
-    def answer_generator(self):
+    async def answer_generator(self):
         # keeps track of the yielded text
         self._answer_text = ""
-        for token in self._answer_generator:
+        async for token in self._answer_generator:
             self._answer_text += token
             yield token
 
@@ -236,7 +236,12 @@ class Completer(ABC):
     """
 
     @abstractmethod
-    def complete(self, prompt: str, user_input) -> (str | Iterator, bool):
+    def async_complete(self, prompt: str, user_input) -> (str | Iterator, bool):
+        """Returns the completed message (can be a generator), and a boolean to indicate if an error occured or not."""
+        ...
+
+    @abstractmethod
+    def sync_complete(self, prompt: str, user_input) -> (str | Iterator, bool):
         """Returns the completed message (can be a generator), and a boolean to indicate if an error occured or not."""
         ...
 
@@ -326,7 +331,9 @@ class DocumentAnswerer:
         logger.info(f"querying model with parameters: {self.completer.completion_kwargs}...")
 
         try:
-            answer_generator, error = await self.completer.complete(prompt=prompt, user_input=user_inputs.current_input)
+            answer_generator, error = await self.completer.async_complete(
+                prompt=prompt, user_input=user_inputs.current_input
+            )
 
         except Exception as e:
             error = True

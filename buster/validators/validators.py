@@ -56,7 +56,7 @@ A user will submit a question. Respond 'true' if it is valid, respond 'false' if
     def check_question_relevance(self, question: str) -> tuple[bool, str]:
         """Determines whether a question is relevant for our given framework."""
         try:
-            outputs, _ = self.completer.complete(self.check_question_prompt, user_input=question)
+            outputs, _ = self.completer.sync_complete(self.check_question_prompt, user_input=question)
             outputs = outputs.strip(".").lower()
             if outputs not in ["true", "false"]:
                 logger.warning(f"the question validation returned an unexpeced value: {outputs=}. Assuming Invalid...")
