@@ -340,7 +340,15 @@ class DocumentAnswerer:
             answer_generator = "Something went wrong with the request, try again soon!"
             logger.exception("Unknown error when attempting to generate response. See traceback:")
 
+        # if isinstance(answer_generator, str):
+        if self.completer.completion_kwargs.get("stream") is False:
+            answer_text = answer_generator
+            answer_generator = None
+        else:
+            answer_text = None
+
         completion = self.completion_class(
+            answer_text=answer_text,
             answer_generator=answer_generator,
             error=error,
             matched_documents=matched_documents,
@@ -349,5 +357,4 @@ class DocumentAnswerer:
             validator=validator,
             completion_kwargs=self.completer.completion_kwargs,
         )
-
         return completion
