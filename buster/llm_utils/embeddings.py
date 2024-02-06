@@ -12,7 +12,7 @@ logger = logging.getLogger(__name__)
 logging.basicConfig(level=logging.INFO)
 
 
-def get_openai_embedding_constructor(client_kwargs: Optional[dict] = None, model: str = "text-embedding-ada-002"):
+def get_openai_embedding_constructor(client_kwargs: Optional[dict] = None, model: str = "text-embedding-3-large"):
     if client_kwargs is None:
         client_kwargs = {}
     client = OpenAI(**client_kwargs)
