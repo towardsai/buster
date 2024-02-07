@@ -18,6 +18,7 @@ class Validator:
         self,
         use_reranking: bool,
         validate_documents: bool,
+        embedding_fn=None,
         question_validator_cfg=None,
         answer_validator_cfg=None,
         documents_validator_cfg=None,
@@ -45,6 +46,7 @@ class Validator:
         )
         self.use_reranking = use_reranking
         self.validate_documents = validate_documents
+        self.embedding_fn = embedding_fn if embedding_fn is not None else get_openai_embedding
 
     def check_question_relevance(self, question: str) -> tuple[bool, str]:
         """
@@ -83,9 +85,7 @@ class Validator:
         """
         return self.documents_validator.check_documents_relevance(answer, matched_documents)
 
-    def rerank_docs(
-        self, answer: str, matched_documents: pd.DataFrame, embedding_fn=get_openai_embedding
-    ) -> pd.DataFrame:
+    def rerank_docs(self, answer: str, matched_documents: pd.DataFrame) -> pd.DataFrame:
         """
         Reranks the matched documents based on answer similarity.
 
@@ -106,7 +106,7 @@ class Validator:
             return matched_documents
         logger.info("Reranking documents based on answer similarity...")
 
-        answer_embedding = embedding_fn(answer)
+        answer_embedding = self.embedding_fn(answer)
 
         col = "similarity_to_answer"
         matched_documents[col] = matched_documents.embedding.apply(lambda x: cosine_similarity(x, answer_embedding))
