@@ -43,7 +43,7 @@ class ChatGPTCompleter(Completer):
         self.async_client = AsyncOpenAI(**client_kwargs)
         self.sync_client = OpenAI(**client_kwargs)
 
-    async def async_complete(self, prompt: str, user_input: str, completion_kwargs=None) -> (str | Iterator, bool):
+    async def async_complete(self, system_prompt: str, user_input: str, completion_kwargs=None):
         """Given a prompt and user input, returns the generated message and error flag.
 
         Args:
@@ -64,7 +64,7 @@ class ChatGPTCompleter(Completer):
             completion_kwargs = self.completion_kwargs
 
         messages = [
-            {"role": "system", "content": prompt},
+            {"role": "system", "content": system_prompt},
             {"role": "user", "content": user_input},
         ]
 
@@ -74,19 +74,19 @@ class ChatGPTCompleter(Completer):
         except openai.BadRequestError:
             error = True
             logger.exception("Invalid request to OpenAI API. See traceback:")
-            error_message = "Something went wrong while connecting with OpenAI, try again soon!"
+            error_message = "Invalid request to OpenAI API"
             return error_message, error
 
         except openai.RateLimitError:
             error = True
             logger.exception("RateLimit error from OpenAI. See traceback:")
-            error_message = "OpenAI servers seem to be overloaded, try again later!"
+            error_message = f"RateLimit error, try again later"
             return error_message, error
 
         except Exception as e:
             error = True
             logger.exception("Some kind of error happened trying to generate the response. See traceback:")
-            error_message = "Something went wrong with connecting with OpenAI, try again soon!"
+            error_message = "Something went wrong with connecting with OpenAI"
             return error_message, error
 
         if completion_kwargs.get("stream") is True:
@@ -107,7 +107,7 @@ class ChatGPTCompleter(Completer):
             full_response: str = response.choices[0].message.content
             return full_response, error
 
-    def sync_complete(self, prompt: str, user_input: str, completion_kwargs=None) -> (str | Iterator, bool):
+    def sync_complete(self, system_prompt: str, user_input: str, completion_kwargs=None) -> (str | Iterator, bool):
         """Given a prompt and user input, returns the generated message and error flag.
 
         Args:
@@ -128,7 +128,7 @@ class ChatGPTCompleter(Completer):
             completion_kwargs = self.completion_kwargs
 
         messages = [
-            {"role": "system", "content": prompt},
+            {"role": "system", "content": system_prompt},
             {"role": "user", "content": user_input},
         ]
 

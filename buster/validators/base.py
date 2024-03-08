@@ -46,7 +46,7 @@ class Validator:
         self.use_reranking = use_reranking
         self.validate_documents = validate_documents
 
-    def check_question_relevance(self, question: str) -> tuple[bool, str]:
+    async def check_question_relevance(self, question: str) -> tuple[bool, str]:
         """
         Checks the relevance of a question.
 
@@ -56,7 +56,7 @@ class Validator:
         Returns:
           A tuple containing a boolean indicating the relevance and a string describing the result.
         """
-        return self.question_validator.check_question_relevance(question)
+        return await self.question_validator.check_question_relevance(question)
 
     def check_answer_relevance(self, answer: str) -> bool:
         """
