@@ -150,7 +150,7 @@ class DocumentsValidator:
 
     def check_document_relevance(self, answer: str, document: str) -> bool:
         user_input = self.user_input_formatter.format(answer=answer, document=document)
-        output, _ = self.completer.complete(prompt=self.system_prompt, user_input=user_input)
+        output, _ = self.completer.complete(system_prompt=self.system_prompt, user_input=user_input)
 
         # remove trailing periods, happens sometimes...
         output = output.strip(".").lower()
