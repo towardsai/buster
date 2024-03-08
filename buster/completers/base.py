@@ -236,12 +236,12 @@ class Completer(ABC):
     """
 
     @abstractmethod
-    def async_complete(self, prompt: str, user_input) -> (str | Iterator, bool):
+    def async_complete(self, system_prompt: str, user_input):
         """Returns the completed message (can be a generator), and a boolean to indicate if an error occured or not."""
         ...
 
     @abstractmethod
-    def sync_complete(self, prompt: str, user_input) -> (str | Iterator, bool):
+    def sync_complete(self, system_prompt: str, user_input):
         """Returns the completed message (can be a generator), and a boolean to indicate if an error occured or not."""
         ...
 
@@ -332,7 +332,7 @@ class DocumentAnswerer:
 
         try:
             answer_generator, error = await self.completer.async_complete(
-                prompt=prompt, user_input=user_inputs.current_input
+                system_prompt=prompt, user_input=user_inputs.current_input
             )
 
         except Exception as e:
