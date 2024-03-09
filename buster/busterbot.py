@@ -1,6 +1,7 @@
 import logging
 from dataclasses import dataclass, field
 from typing import Optional
+import time
 
 import pandas as pd
 
@@ -111,51 +112,40 @@ class Buster:
             user_input += "\n"
 
         user_inputs = UserInputs(original_input=user_input)
+        if self.question_reformulator is not None and reformulate_question:
+            (
+                reformulated_input,
+                reformulation_error,
+            ) = self.question_reformulator.reformulate(user_inputs.original_input)
+            user_inputs.reformulated_input = reformulated_input
 
-        # The returned message is either a generic invalid question message or an error handling message
-        question_relevant, irrelevant_question_message = self.validator.check_question_relevance(user_input)
-
-        if question_relevant:
-            # question is relevant, get completor to generate completion
-
-            # reformulate the question if a reformulator is defined
-            if self.question_reformulator is not None and reformulate_question:
-                reformulated_input, reformulation_error = self.question_reformulator.reformulate(
-                    user_inputs.original_input
+            if reformulation_error:
+                completion = Completion(
+                    error=True,
+                    user_inputs=user_inputs,
+                    matched_documents=pd.DataFrame(),
+                    answer_text="Something went wrong reformulating the question. Try again soon.",
+                    answer_relevant=False,
+                    question_relevant=False,
+                    validator=self.validator,
                 )
-                user_inputs.reformulated_input = reformulated_input
+                return completion
 
-                if reformulation_error:
-                    completion = Completion(
-                        error=True,
-                        user_inputs=user_inputs,
-                        matched_documents=pd.DataFrame(),
-                        answer_text="Something went wrong reformulating the question. Try again soon.",
-                        answer_relevant=False,
-                        question_relevant=False,
-                        validator=self.validator,
-                    )
-                    return completion
-
-            # Retrieve and answer
-            matched_documents = self.retriever.retrieve(user_inputs, sources=sources, top_k=top_k)
-            completion: Completion = await self.document_answerer.get_completion(
-                user_inputs=user_inputs,
-                matched_documents=matched_documents,
-                validator=self.validator,
-                question_relevant=question_relevant,
-            )
-            return completion
-
-        else:
-            # question was determined irrelevant, so we instead return a generic response set by the user.
-            completion = Completion(
-                error=False,
-                user_inputs=user_inputs,
-                matched_documents=pd.DataFrame(),
-                answer_text=irrelevant_question_message,
-                answer_relevant=False,
-                question_relevant=False,
-                validator=self.validator,
-            )
-            return completion
+        start = time.time()
+        matched_documents = self.retriever.retrieve(
+            user_inputs, sources=sources, top_k=top_k
+        )
+        retrieved_time = time.time() - start
+        logger.info(
+            f"Retrieved {len(matched_documents)} documents in {retrieved_time} seconds."
+        )
+        start = time.time()
+        completion = await self.document_answerer.get_completion(
+            user_inputs=user_inputs,
+            matched_documents=matched_documents,
+            validator=self.validator,
+            question_relevant=True,
+        )
+        answered_time = time.time() - start
+        logger.info(f"Generated answer in {answered_time} seconds.")
+        return completion
