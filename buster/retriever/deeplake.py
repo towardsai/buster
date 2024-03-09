@@ -26,7 +26,7 @@ def extract_metadata(x: pd.DataFrame, columns) -> pd.DataFrame:
     return x
 
 
-def data_dict_to_df(data: dict) -> pd.DataFrame:
+def data_dict_to_df(data: dict, metadata_fields_to_include: list[str] = None) -> pd.DataFrame:
     """Converts a dictionary of data to a Pandas DataFrame.
 
     Args:
@@ -39,13 +39,18 @@ def data_dict_to_df(data: dict) -> pd.DataFrame:
     data["similarity"] = data.pop("score")
     data["content"] = data.pop("text")
 
+    data["embedding"] = [embedding.flatten() for embedding in data["embedding"]]
     matched_documents = pd.DataFrame(data)
 
     if len(matched_documents) == 0:
         logger.info("No matches found...")
         return pd.DataFrame()
 
-    matched_documents = matched_documents.apply(extract_metadata, columns=["source", "title", "url"], axis=1)
+    matched_documents = matched_documents.apply(
+        extract_metadata,
+        columns=metadata_fields_to_include if metadata_fields_to_include is not None else ["source", "title", "url"],
+        axis=1,
+    )
     matched_documents = matched_documents.drop(columns="metadata")
 
     return matched_documents
@@ -91,6 +96,7 @@ class DeepLakeRetriever(Retriever):
         use_tql: bool = False,
         deep_memory: bool = False,
         activeloop_token: str = None,
+        metadata_fields_to_include: list[str] = None,
         **kwargs,
     ):
         from deeplake.core.vectorstore import VectorStore
@@ -105,6 +111,7 @@ class DeepLakeRetriever(Retriever):
             token=activeloop_token,
             exec_option=exec_option,
         )
+        self.metadata_fields_to_include = metadata_fields_to_include
 
         if activeloop_token is None and use_tql:
             logger.warning(
@@ -176,26 +183,22 @@ class DeepLakeRetriever(Retriever):
             raise ValueError("must provide either a query or an embedding")
 
         if self.use_tql:
-            assert self.exec_option == "compute_engine", "cant use tql without compute_engine"
+            assert (
+                self.exec_option == "compute_engine"
+            ), "cant use tql without compute_engine"
             tql_query = build_tql_query(query_embedding, sources=sources, top_k=top_k)
-            data = self.vector_store.search(query=tql_query, deep_memory=self.deep_memory)
-        else:
-            # build the filter clause
-            if sources:
-
-                def filter(x):
-                    return x["metadata"].data()["value"]["source"] in sources
-
-            else:
-                filter = None
-
             data = self.vector_store.search(
-                k=top_k,
+                query=tql_query, deep_memory=self.deep_memory
+            )
+        else:
+            data = self.vector_store.search(
                 embedding=query_embedding,
+                k=top_k,
+                deep_memory=self.deep_memory,
                 exec_option=self.exec_option,
+                return_view=False,
                 return_tensors=return_tensors,
-                filter=filter,
             )
 
-        matched_documents = data_dict_to_df(data)
+        matched_documents = data_dict_to_df(data, self.metadata_fields_to_include)
         return matched_documents
