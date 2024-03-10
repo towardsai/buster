@@ -337,8 +337,8 @@ class DocumentAnswerer:
 
         except Exception as e:
             error = True
-            answer_generator = "Something went wrong with the request, try again soon!"
             logger.exception("Unknown error when attempting to generate response. See traceback:")
+            answer_generator = "Something went wrong with the request."
 
         # if isinstance(answer_generator, str):
         if self.completer.completion_kwargs.get("stream") is False:

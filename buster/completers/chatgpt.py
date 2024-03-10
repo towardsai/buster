@@ -73,14 +73,20 @@ class ChatGPTCompleter(Completer):
             response = await self.async_client.chat.completions.create(messages=messages, **completion_kwargs)
         except openai.BadRequestError:
             error = True
-            logger.exception("Invalid request to OpenAI API. See traceback:")
-            error_message = "Invalid request to OpenAI API"
+            logger.exception("BadRequestError to OpenAI API. See traceback:")
+            error_message = "BadRequestError to OpenAI API"
+            return error_message, error
+
+        except openai.InternalServerError:
+            error = True
+            logger.exception("InternalServerError with the OpenAI API. See traceback:")
+            error_message = "InternalServerError with the OpenAI API. See traceback:"
             return error_message, error
 
         except openai.RateLimitError:
             error = True
-            logger.exception("RateLimit error from OpenAI. See traceback:")
-            error_message = f"RateLimit error, try again later"
+            logger.exception("RateLimitError from OpenAI. See traceback:")
+            error_message = "RateLimitError, try again later"
             return error_message, error
 
         except Exception as e:
