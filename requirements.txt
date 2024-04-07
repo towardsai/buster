@@ -13,3 +13,4 @@ pytest
 tabulate
 tenacity
 tiktoken
+anthropic
