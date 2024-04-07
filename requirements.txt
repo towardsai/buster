@@ -14,3 +14,4 @@ tabulate
 tenacity
 tiktoken
 anthropic
+instructor
