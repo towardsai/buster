@@ -5,7 +5,7 @@ from typing import Callable, List, Optional
 import numpy as np
 import pandas as pd
 
-from buster.completers import ChatGPTCompleter, Completer
+from buster.completers import AnthropicCompleter, ChatGPTCompleter, Completer
 from buster.llm_utils import cosine_similarity
 from buster.llm_utils.embeddings import get_openai_embedding
 
@@ -16,6 +16,7 @@ logging.basicConfig(level=logging.INFO)
 class QuestionValidator:
     def __init__(
         self,
+        completer_type: str,
         check_question_prompt: Optional[str] = None,
         invalid_question_response: Optional[str] = None,
         completion_kwargs: Optional[dict] = None,
@@ -49,7 +50,13 @@ A user will submit a question. Respond 'true' if it is valid, respond 'false' if
                 },
             )
 
-        self.completer = ChatGPTCompleter(completion_kwargs=completion_kwargs, client_kwargs=client_kwargs)
+        if completer_type == "openai":
+            self.completer = ChatGPTCompleter(completion_kwargs=completion_kwargs, client_kwargs=client_kwargs)
+        elif completer_type == "anthropic":
+            self.completer = AnthropicCompleter(completion_kwargs=completion_kwargs, client_kwargs=client_kwargs)
+        else:
+            raise ValueError(f"Invalid completer type: {completer_type}")
+
         self.check_question_prompt = check_question_prompt
         self.invalid_question_response = invalid_question_response
 
@@ -115,6 +122,7 @@ class AnswerValidator:
 class DocumentsValidator:
     def __init__(
         self,
+        completer_type: str,
         completion_kwargs: Optional[dict] = None,
         client_kwargs: Optional[dict] = None,
         system_prompt: Optional[str] = None,
@@ -144,6 +152,12 @@ class DocumentsValidator:
                 "temperature": 0,
             }
 
+        if completer_type == "openai":
+            self.completer = ChatGPTCompleter(completion_kwargs=completion_kwargs, client_kwargs=client_kwargs)
+        elif completer_type == "anthropic":
+            self.completer = AnthropicCompleter(completion_kwargs=completion_kwargs, client_kwargs=client_kwargs)
+        else:
+            raise ValueError(f"Invalid completer type: {completer_type}")
         self.completer = ChatGPTCompleter(completion_kwargs=completion_kwargs, client_kwargs=client_kwargs)
 
         self.max_calls = max_calls
