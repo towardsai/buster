@@ -17,7 +17,7 @@ class AnthropicCompleter(Completer):
 
         Args:
           completion_kwargs: A dictionary of keyword arguments to be used for completions.
-          client_kwargs: An optional dictionary of keyword arguments to be used for the OpenAI client.
+          client_kwargs: An optional dictionary of keyword arguments to be used for the client.
         """
         # use default client if none passed
         self.completion_kwargs = completion_kwargs
@@ -40,8 +40,8 @@ class AnthropicCompleter(Completer):
           A tuple containing the completed message and a boolean indicating if an error occurred.
 
         Raises:
-          openai.BadRequestError: If the completion request is invalid.
-          openai.RateLimitError: If the servers are overloaded.
+          anthropic.BadRequestError: If the completion request is invalid.
+          anthropic.RateLimitError: If the servers are overloaded.
         """
         # Uses default configuration if not overridden
 
@@ -55,7 +55,7 @@ class AnthropicCompleter(Completer):
 
         try:
             error = False
-            response = await self.async_client.chat.completions.create(system=system_prompt, messages=messages, response_model=None, max_tokens=4000, **completion_kwargs)
+            response = await self.async_client.chat.completions.create(system=system_prompt, messages=messages, max_tokens=4000, **completion_kwargs)
         except anthropic.BadRequestError:
             error = True
             logger.exception("BadRequestError to Anthropic API. See traceback:")
@@ -87,7 +87,6 @@ class AnthropicCompleter(Completer):
                 async for chunk in response:
                     if chunk.type == "content_block_delta":
                         token = chunk.delta.text
-                        # Always stream a string, openAI returns None on last token
                         token = "" if token is None else token
                         yield token
                     else:
@@ -96,7 +95,11 @@ class AnthropicCompleter(Completer):
             return answer_generator(), error
 
         else:
-            full_response: str = response.content[0].text
+            if completion_kwargs.get("response_model") is None:
+                full_response: str = response.content[0].text
+            else:
+                logger.info(f"{response.model_dump_json(indent=2)=}")
+                full_response = response
             return full_response, error
 
     def sync_complete(self, system_prompt: str, user_input: str, completion_kwargs=None) -> (str | Iterator, bool):
@@ -160,6 +163,5 @@ class AnthropicCompleter(Completer):
             return answer_generator(), error
 
         else:
-            # full_response: str = response.choices[0].message.content
             full_response: str = response.choices[0].message.content
             return full_response, error

@@ -23,8 +23,7 @@ class QuestionValidator:
         client_kwargs: Optional[dict] = None,
     ):
         if check_question_prompt is None:
-            check_question_prompt = (
-                """You are a chatbot answering questions on documentation.
+            check_question_prompt = """You are a chatbot answering questions on documentation.
 Your job is to determine whether or not a question is valid, and should be answered.
 More general questions are not considered valid, even if you might know the response.
 A user will submit a question. Respond 'true' if it is valid, respond 'false' if it is invalid.
@@ -37,18 +36,18 @@ true
 Q: What is the meaning of life?
 false
 
-A user will submit a question. Respond 'true' if it is valid, respond 'false' if it is invalid.""",
-            )
+A user will submit a question. Respond 'true' if it is valid, respond 'false' if it is invalid."""
+
 
         if completion_kwargs is None:
             # default completion kwargs
-            completion_kwargs = (
-                {
+            completion_kwargs ={
                     "model": "gpt-3.5-turbo",
                     "stream": False,
                     "temperature": 0,
-                },
-            )
+                    "response_model": None
+                }
+    
 
         if completer_type == "openai":
             self.completer = ChatGPTCompleter(completion_kwargs=completion_kwargs, client_kwargs=client_kwargs)
@@ -63,11 +62,8 @@ A user will submit a question. Respond 'true' if it is valid, respond 'false' if
     async def check_question_relevance(self, question: str) -> tuple[bool, str]:
         """Determines whether a question is relevant for our given framework."""
         try:
-            outputs, error = await self.completer.async_complete(system_prompt=self.check_question_prompt, user_input=question)
-            outputs = outputs.strip(".").lower()
-            if outputs not in ["true", "false"]:
-                logger.warning(f"the question validation returned an unexpeced value: {outputs=}. Assuming Invalid...")
-            relevance = outputs.strip(".").lower() == "true"
+            resp, error = await self.completer.async_complete(system_prompt=self.check_question_prompt, user_input=question)
+            relevance = resp.is_valid
             response = self.invalid_question_response
 
         except Exception as e:
