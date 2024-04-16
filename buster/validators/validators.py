@@ -62,17 +62,13 @@ A user will submit a question. Respond 'true' if it is valid, respond 'false' if
     async def check_question_relevance(self, question: str) -> tuple[bool, str]:
         """Determines whether a question is relevant for our given framework."""
         try:
-            resp, error = await self.completer.async_complete(system_prompt=self.check_question_prompt, user_input=question)
-            relevance = resp.is_valid
-            response = self.invalid_question_response
-
+            response, error = await self.completer.async_complete(system_prompt=self.check_question_prompt, user_input=question)
         except Exception as e:
             logger.exception("Error during question relevance detection.")
-            relevance = False
             error = True
             response = "Unable to process your question at the moment, try again soon"
 
-        return relevance, error
+        return response, error
 
 
 class AnswerValidator:
