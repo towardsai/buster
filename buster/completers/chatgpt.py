@@ -11,6 +11,7 @@ from buster.completers import Completer
 
 logger = logging.getLogger(__name__)
 logging.basicConfig(level=logging.INFO)
+logfire.configure()
 
 # Check if an API key exists for promptlayer, if it does, use it
 promptlayer_api_key = os.environ.get("PROMPTLAYER_API_KEY")
