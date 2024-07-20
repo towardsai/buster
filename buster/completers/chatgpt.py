@@ -4,6 +4,7 @@ from typing import Iterator, Optional
 
 import openai
 from openai import AsyncOpenAI, OpenAI
+import instructor
 
 from buster.completers import Completer
 
@@ -40,8 +41,8 @@ class ChatGPTCompleter(Completer):
         if client_kwargs is None:
             client_kwargs = {}
 
-        self.async_client = AsyncOpenAI(**client_kwargs)
-        self.sync_client = OpenAI(**client_kwargs)
+        self.async_client= instructor.from_openai(AsyncOpenAI(**client_kwargs))
+        self.sync_client = instructor.from_openai(OpenAI(**client_kwargs))
 
     async def async_complete(self, system_prompt: str, user_input: str, completion_kwargs=None):
         """Given a prompt and user input, returns the generated message and error flag.
@@ -70,7 +71,7 @@ class ChatGPTCompleter(Completer):
 
         try:
             error = False
-            response = await self.async_client.chat.completions.create(messages=messages, **completion_kwargs)
+            response = await self.async_client.chat.completions.create(messages=messages, max_tokens=8000, **completion_kwargs)
         except openai.BadRequestError:
             error = True
             logger.exception("BadRequestError to OpenAI API. See traceback:")
@@ -110,7 +111,11 @@ class ChatGPTCompleter(Completer):
             return answer_generator(), error
 
         else:
-            full_response: str = response.choices[0].message.content
+            if completion_kwargs.get("response_model") is None:
+                full_response: str = response.choices[0].message.content
+            else:
+                logger.info(f"{response.model_dump_json(indent=2)=}")
+                full_response = response
             return full_response, error
 
     def sync_complete(self, system_prompt: str, user_input: str, completion_kwargs=None) -> (str | Iterator, bool):
