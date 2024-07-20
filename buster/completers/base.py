@@ -326,7 +326,6 @@ class DocumentAnswerer:
 
         # prepare the prompt with matched documents
         prompt = self.prepare_prompt(matched_documents)
-        logger.info(f"{prompt=}")
 
         logger.info(f"querying model with parameters: {self.completer.completion_kwargs}...")
 

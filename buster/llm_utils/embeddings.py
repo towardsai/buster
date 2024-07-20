@@ -2,6 +2,7 @@ import logging
 from functools import lru_cache
 from typing import Optional
 
+import logfire
 import numpy as np
 import pandas as pd
 from openai import OpenAI
@@ -16,6 +17,8 @@ def get_openai_embedding_constructor(client_kwargs: Optional[dict] = None, model
     if client_kwargs is None:
         client_kwargs = {}
     client = OpenAI(**client_kwargs)
+    logfire.instrument_openai(client)
+
 
     @lru_cache
     def embedding_fn(text: str, model: str = model) -> np.array:

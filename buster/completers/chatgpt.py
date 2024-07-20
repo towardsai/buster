@@ -5,6 +5,7 @@ from typing import Iterator, Optional
 import openai
 from openai import AsyncOpenAI, OpenAI
 import instructor
+import logfire
 
 from buster.completers import Completer
 
@@ -41,8 +42,14 @@ class ChatGPTCompleter(Completer):
         if client_kwargs is None:
             client_kwargs = {}
 
-        self.async_client= instructor.from_openai(AsyncOpenAI(**client_kwargs))
-        self.sync_client = instructor.from_openai(OpenAI(**client_kwargs))
+        async_client = AsyncOpenAI(**client_kwargs)
+        sync_client = OpenAI(**client_kwargs)
+        
+        logfire.instrument_openai(async_client)
+        logfire.instrument_openai(sync_client)
+        
+        self.async_client= instructor.from_openai(async_client)
+        self.sync_client = instructor.from_openai(sync_client)
 
     async def async_complete(self, system_prompt: str, user_input: str, completion_kwargs=None):
         """Given a prompt and user input, returns the generated message and error flag.
