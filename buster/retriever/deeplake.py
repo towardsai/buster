@@ -39,6 +39,8 @@ def data_dict_to_df(data: dict) -> pd.DataFrame:
     data["similarity"] = data.pop("score")
     data["content"] = data.pop("text")
 
+    data["embedding"] = [embedding.flatten() for embedding in data["embedding"]]
+
     matched_documents = pd.DataFrame(data)
 
     if len(matched_documents) == 0:
