@@ -95,9 +95,11 @@ class DocumentsManager(ABC):
 
         # Check if embeddings are present, computes them if not
         if "embedding" not in df.columns:
-            df["embedding"] = compute_embeddings_parallelized(df, embedding_fn=embedding_fn, num_workers=num_workers)
+            embeddings = compute_embeddings_parallelized(df, embedding_fn=embedding_fn, num_workers=num_workers)
+            df["embedding"] = pd.Series(embeddings)
         if "sparse_embedding" not in df.columns and sparse_embedding_fn is not None:
-            df["sparse_embedding"] = sparse_embedding_fn(df.content.to_list())
+            sparse_embeddings = sparse_embedding_fn(df.content.to_list())
+            df["sparse_embedding"] = pd.Series(sparse_embeddings)
 
         if csv_filename is not None:
             self._checkpoint_csv(df, csv_filename=csv_filename, csv_overwrite=csv_overwrite)
@@ -116,29 +118,7 @@ class DocumentsManager(ABC):
         csv_overwrite: bool = False,
         **add_kwargs,
     ):
-        """
-        Adds DataFrame data to a DataManager instance in batches.
-
-        This function takes a DataFrame and adds its data to a DataManager instance in batches.
-        It ensures that a minimum time interval is maintained between successive batches
-        to prevent timeouts or excessive load. This is useful for APIs like openAI with rate limits.
-
-        Args:
-            df (pd.DataFrame): The input DataFrame containing data to be added.
-            batch_size (int, optional): The size of each batch. Defaults to 3000.
-            min_time_interval (int, optional): The minimum time interval (in seconds) between batches.
-                                                Defaults to 60.
-            num_workers (int, optional): The number of parallel workers to use when adding data.
-                                        Defaults to 32.
-            embedding_fn (callable, optional): A function that computes embeddings for a given input string.
-                Default is 'get_embedding_openai' which uses the text-embedding-ada-002 model.
-            sparse_embedding_fn (callable, optional): A function that computes sparse embeddings for a given input string.
-                Default is None. Only use if you want sparse embeddings.
-            csv_filename (str, optional): Path to save a copy of the dataframe with computed embeddings for later use.
-            csv_overwrite (bool, optional): Whether to overwrite the file with a new file. Defaults to False.
-                When using batches, set to False to keep all embeddings in the same file. You may want to manually remove the file if experimenting.
-            **add_kwargs: Additional keyword arguments to be passed to the '_add_documents' method.
-        """
+        """Adds DataFrame data to a DataManager instance in batches."""
 
         total_batches = (len(df) // batch_size) + 1
 
@@ -148,26 +128,33 @@ class DocumentsManager(ABC):
             logger.info(f"Processing batch {batch_idx + 1}/{total_batches}")
             start_time = time.time()
 
-            # Calculate batch indices and extract batch DataFrame
+            # Calculate batch indices
             start_idx = batch_idx * batch_size
             end_idx = min((batch_idx + 1) * batch_size, len(df))
-            batch_df = df.iloc[start_idx:end_idx]
 
-            # Add the batch data to using specified parameters
-            self.add(
-                batch_df,
-                num_workers=num_workers,
-                csv_filename=csv_filename,
-                csv_overwrite=csv_overwrite,
-                embedding_fn=embedding_fn,
-                sparse_embedding_fn=sparse_embedding_fn,
-                **add_kwargs,
-            )
+            # Instead of slicing, use .iloc to get a copy of the batch
+            batch_df = df.iloc[start_idx:end_idx].copy()
+
+            # Compute embeddings for the batch
+            if "embedding" not in batch_df.columns:
+                embeddings = compute_embeddings_parallelized(
+                    batch_df, embedding_fn=embedding_fn, num_workers=num_workers
+                )
+                batch_df["embedding"] = embeddings
+            if "sparse_embedding" not in batch_df.columns and sparse_embedding_fn is not None:
+                sparse_embeddings = sparse_embedding_fn(batch_df.content.to_list())
+                batch_df["sparse_embedding"] = sparse_embeddings
+
+            # Save to CSV if filename is provided
+            if csv_filename is not None:
+                self._checkpoint_csv(batch_df, csv_filename=csv_filename, csv_overwrite=csv_overwrite)
+
+            # Add the batch data using specified parameters
+            self._add_documents(batch_df, **add_kwargs)
 
             elapsed_time = time.time() - start_time
 
             # Sleep to ensure the minimum time interval is maintained
-            # Only sleep if it's not the last iteration
             if batch_idx < total_batches - 1:
                 sleep_time = max(0, min_time_interval - elapsed_time)
                 if sleep_time > 0:
