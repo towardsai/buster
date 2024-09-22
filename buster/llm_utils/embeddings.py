@@ -13,12 +13,11 @@ logger = logging.getLogger(__name__)
 logging.basicConfig(level=logging.INFO)
 
 
-def get_openai_embedding_constructor(client_kwargs: Optional[dict] = None, model: str = "text-embedding-3-large"):
+def get_openai_embedding_constructor(client_kwargs: Optional[dict] = None, model: str = "text-embedding-3-small"):
     if client_kwargs is None:
         client_kwargs = {}
     client = OpenAI(**client_kwargs)
     logfire.instrument_openai(client)
-
 
     @lru_cache
     def embedding_fn(text: str, model: str = model) -> np.array:
