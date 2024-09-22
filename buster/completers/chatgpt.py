@@ -2,6 +2,7 @@ import logging
 import os
 from typing import Iterator, Optional
 
+import logfire
 import openai
 from openai import OpenAI
 
@@ -9,6 +10,7 @@ from buster.completers import Completer
 
 logger = logging.getLogger(__name__)
 logging.basicConfig(level=logging.INFO)
+logfire.configure()
 
 # Check if an API key exists for promptlayer, if it does, use it
 promptlayer_api_key = os.environ.get("PROMPTLAYER_API_KEY")
@@ -41,6 +43,7 @@ class ChatGPTCompleter(Completer):
             client_kwargs = {}
 
         self.client = OpenAI(**client_kwargs)
+        logfire.instrument_openai(self.client)
 
     def complete(self, prompt: str, user_input: str, completion_kwargs=None) -> (str | Iterator, bool):
         """Given a prompt and user input, returns the generated message and error flag.
